@@ -236,7 +236,12 @@ pub fn rewrite_paths(
     filter_option: Option<bool>,
     file_filter: crate::FileFilter,
 ) -> CovResultIter {
+    println!("rewrite_paths: X source_dir={:?}", source_dir);
+    print!("rewrite_paths: ignore_dirs=");
+    to_ignore_dirs.into_iter().for_each(|e| print!("{}, ", e.as_ref()));
+    println!();
     let to_ignore_globset = to_globset(to_ignore_dirs);
+    println!("rewrite_paths: to_ignore_globset.len={}", to_ignore_globset.len());
     let to_keep_globset = to_globset(to_keep_dirs);
 
     if let Some(p) = &source_dir {
@@ -250,23 +255,33 @@ pub fn rewrite_paths(
             .into_iter()
             .filter_entry(|e| !is_hidden(e) && !is_symbolic_link(e))
         {
+            //println!("this is entry path: {:?}", entry);
             let entry = entry
                 .unwrap_or_else(|_| panic!("Failed to open directory '{}'.", source_dir.display()));
+            
 
             let full_path = entry.path();
             if !full_path.is_file() {
+                //println!("ignoring       dir: {:?}", full_path);
                 continue;
             }
 
+            println!("checking full_path: {:?}", full_path);
             let path = full_path.strip_prefix(&source_dir).unwrap().to_path_buf();
+            println!("checking  stripped: {:?}", path);
             if to_ignore_globset.is_match(&path) {
+                println!("ignoring     path: {:?}", path);
                 continue;
             }
 
             let name = entry.file_name().to_str().unwrap().to_string();
-            match file_to_paths.entry(name) {
-                hash_map::Entry::Occupied(f) => f.into_mut().push(path),
+            match file_to_paths.entry(name.clone()) {
+                hash_map::Entry::Occupied(f) => {
+                    //println!("for '{name}'   push: '{path:?}'");
+                    f.into_mut().push(path)
+                }
                 hash_map::Entry::Vacant(v) => {
+                    //println!("for '{name}' insert: '{path:?}'");
                     v.insert(vec![path]);
                 }
             };
@@ -295,6 +310,7 @@ pub fn rewrite_paths(
             let (abs_path, rel_path) = get_abs_path(source_dir, rel_path)?;
 
             if to_ignore_globset.is_match(&rel_path) {
+                println!("results: to_ignore_globset, ignoring: {:?}", rel_path);
                 return None;
             }
 
@@ -340,7 +356,7 @@ pub fn rewrite_paths(
 
             Some((abs_path, rel_path, result))
         });
-
+    //println!("rewrite_paths: result={:#?}", results);
     Box::new(
         results
             .collect::<Vec<(PathBuf, PathBuf, CovResult)>>()

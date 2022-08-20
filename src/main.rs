@@ -316,6 +316,7 @@ fn main() {
     let (sender, receiver) = bounded(2 * num_threads);
     let path_mapping: Arc<Mutex<Option<Value>>> = Arc::new(Mutex::new(None));
 
+    println!("main: opt.paths={:?}", opt.paths);
     let producer = {
         let sender: JobSender = sender.clone();
         let tmp_path = tmp_path.clone();
